@@ -1,0 +1,5 @@
+.idea/
+__pycache__/
+*.csv
+owid-covid-data.csv
+.DS_Store
