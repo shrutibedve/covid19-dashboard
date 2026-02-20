@@ -66,3 +66,6 @@ Streamlit will automatically open a new tab in your default browser at `http://l
 
 ## 📄 Data Source
 - Dataset provided by **[Our World in Data](https://github.com/owid/covid-19-data/tree/master/public/data)**.
+
+http://localhost:8501/
+
