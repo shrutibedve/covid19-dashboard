@@ -1,20 +1,34 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import streamlit as st
+from pathlib import Path
 
 st.set_page_config(page_title="COVID-19 Analytical Dashboard", layout="wide", page_icon="🦠")
+
+DATA_URL = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"
+LOCAL_DATA_PATH = Path("owid-covid-data.csv")
+AGGREGATE_LOCATIONS = [
+    'World', 'International', 'High income', 'Upper middle income',
+    'Lower middle income', 'Low income', 'Europe', 'Asia',
+    'North America', 'South America', 'Africa', 'European Union'
+]
 
 @st.cache_data
 def load_data():
     # Define columns we want to keep for a more analytical dashboard
     cols = ['location', 'date', 'total_cases', 'new_cases', 'total_deaths', 'new_deaths', 'people_fully_vaccinated', 'population']
-    
-    # Load data directly from OWID repository to avoid 100MB+ file size limits during deployment
-    data_url = "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv"
-    data = pd.read_csv(data_url, usecols=lambda c: c in cols)
+
+    # Prefer live data, but allow local analysis if the network is unavailable.
+    try:
+        data = pd.read_csv(DATA_URL, usecols=lambda c: c in cols)
+    except Exception as exc:
+        if not LOCAL_DATA_PATH.exists():
+            st.error(f"Unable to load COVID-19 data: {exc}")
+            st.stop()
+        data = pd.read_csv(LOCAL_DATA_PATH, usecols=lambda c: c in cols)
     
     # Remove aggregate regions to only keep actual countries
-    data = data[~data['location'].isin(['World', 'International', 'High income', 'Upper middle income', 'Lower middle income', 'Low income', 'Europe', 'Asia', 'North America', 'South America', 'Africa', 'European Union'])]
+    data = data[~data['location'].isin(AGGREGATE_LOCATIONS)]
     
     # Convert dates
     data['date'] = pd.to_datetime(data['date'])
@@ -32,6 +46,9 @@ def load_data():
     return data
 
 data = load_data()
+country_options = sorted(data['location'].dropna().unique())
+default_country = "India"
+default_country_index = country_options.index(default_country) if default_country in country_options else 0
 
 # Header
 st.title("🦠 Advanced COVID-19 Analytical Dashboard")
@@ -46,7 +63,11 @@ with tab1:
     # Controls in columns
     ctrl_col1, ctrl_col2 = st.columns([1, 2])
     with ctrl_col1:
-        country = st.selectbox("Select a country to analyze:", options=data['location'].dropna().unique(), index=225) # Default to a notable one if index exists, else just selected
+        country = st.selectbox(
+            "Select a country to analyze:",
+            options=country_options,
+            index=default_country_index
+        )
     
     country_data_full = data[data['location'] == country]
     min_date = country_data_full['date'].min().date()
@@ -137,7 +158,7 @@ with tab2:
     # Multi-select for comparison
     countries_to_compare = st.multiselect(
         "Select countries to compare:",
-        options=data['location'].dropna().unique(),
+        options=country_options,
         default=["United States", "India", "Brazil", "United Kingdom", "South Africa"]
     )
     
